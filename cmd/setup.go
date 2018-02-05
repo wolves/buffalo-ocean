@@ -7,9 +7,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/fatih/structs"
 	"github.com/gobuffalo/makr"
 	"github.com/spf13/cobra"
+	emoji "gopkg.in/kyokomi/emoji.v1"
 )
 
 // setupCmd represents the setup command
@@ -41,18 +43,31 @@ type Setup struct {
 }
 
 func (s Setup) Run() error {
+	green := color.New(color.FgGreen).SprintFunc()
+
 	serverName = "Test-App"
-	fmt.Printf("Provisioning server: %v.\n", serverName)
+	fmt.Printf("Provisioning server: %v.\n", green(serverName))
 	g := makr.New()
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return validateGit()
 		},
 	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			return validateDockerMachine()
+		},
+	})
 
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return createCloudServer(data)
+		},
+	})
+
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			return createSwapFile()
 		},
 	})
 
@@ -67,7 +82,9 @@ func requestKey() string {
 }
 
 func createCloudServer(d makr.Data) error {
-	fmt.Printf("Deploying: %s\n", serverName)
+	green := color.New(color.FgGreen).SprintFunc()
+
+	fmt.Printf("Deploying: %s\n", green(serverName))
 	fmt.Printf("Creating docker machine: %s\n", serverName)
 
 	// Check is key has been set. Yes: Set it to variable and call create / No: fire user prompt to input key
@@ -89,8 +106,13 @@ func createCloudServer(d makr.Data) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	cmd.Run()
+	// cmd.Run()
+	fmt.Printf("CMD: %v\n", cmd)
+	emoji.Println(":beers: Server creation completed!")
+	return nil
+}
 
-	fmt.Println("Server creation completed!")
+func createSwapFile() error {
+
 	return nil
 }

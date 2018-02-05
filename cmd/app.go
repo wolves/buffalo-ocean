@@ -18,3 +18,10 @@ func validateGit() error {
 	}
 	return nil
 }
+
+func validateDockerMachine() error {
+	if _, err := exec.LookPath("docker-machine"); err != nil {
+		return errors.New("Docker is not installed. https://docs.docker.com/install/")
+	}
+	return nil
+}

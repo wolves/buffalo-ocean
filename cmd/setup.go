@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
 	"github.com/gobuffalo/makr"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	emoji "gopkg.in/kyokomi/emoji.v1"
 )
@@ -46,7 +47,7 @@ func (s Setup) Run() error {
 	green := color.New(color.FgGreen).SprintFunc()
 
 	serverName = "Test-App"
-	fmt.Printf("Provisioning server: %v.\n", green(serverName))
+	fmt.Printf("==> Provisioning server: %v.\n", green(serverName))
 	g := makr.New()
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
@@ -76,7 +77,7 @@ func (s Setup) Run() error {
 
 func requestKey() string {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Please enter your DigitalOcean Token:")
+	color.Yellow("Please enter your DigitalOcean Token:")
 	key, _ := reader.ReadString('\n')
 	return strings.TrimSpace(key)
 }
@@ -84,8 +85,8 @@ func requestKey() string {
 func createCloudServer(d makr.Data) error {
 	green := color.New(color.FgGreen).SprintFunc()
 
-	fmt.Printf("Deploying: %s\n", green(serverName))
-	fmt.Printf("Creating docker machine: %s\n", serverName)
+	fmt.Printf("==> Deploying: %s\n", green(serverName))
+	fmt.Printf("==> Creating docker machine: %s\n", serverName)
 
 	// Check is key has been set. Yes: Set it to variable and call create / No: fire user prompt to input key
 	var k string
@@ -106,13 +107,32 @@ func createCloudServer(d makr.Data) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	// cmd.Run()
-	fmt.Printf("CMD: %v\n", cmd)
-	emoji.Println(":beers: Server creation completed!")
+	cmd.Run()
+	// fmt.Printf("CMD: %v\n", cmd)
+	emoji.Println("==> Server creation completed!")
 	return nil
 }
 
 func createSwapFile() error {
+	fmt.Println("==> Creating Swapfile")
+	cmds := []string{"dd if=/dev/zero of=/swapfile bs=2k count=1024k"}
+	cmds = append(cmds, "mkswap /swapfile")
+	cmds = append(cmds, "chmod 600 /swapfile")
+	cmds = append(cmds, "swapon /swapfile")
+
+	remoteCmd(strings.Join(cmds[:], " && "))
+	remoteCmd("bash -c \"echo '/swapfile       none    swap    sw      0       0 ' >> /etc/fstab\"")
+
+	return nil
+}
+
+func remoteCmd(cmd string) error {
+	c := exec.Command("docker-machine", "ssh", serverName, cmd)
+	b, err := c.CombinedOutput()
+	if err != nil {
+		fmt.Print(string(b))
+		return errors.WithStack(err)
+	}
 
 	return nil
 }

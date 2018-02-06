@@ -10,9 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
 	"github.com/gobuffalo/makr"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	emoji "gopkg.in/kyokomi/emoji.v1"
 )
 
 // setupCmd represents the setup command
@@ -27,8 +25,10 @@ var setupCmd = &cobra.Command{
 
 var setup = Setup{}
 var serverName string
+var projectName string
 
 func init() {
+	setupCmd.Flags().StringVarP(&setup.AppName, "app-name", "a", "", "The name for the application")
 	setupCmd.Flags().StringVarP(&setup.Branch, "branch", "b", "master", "Branch to use for deployment")
 	setupCmd.Flags().StringVarP(&setup.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
 	setupCmd.Flags().StringVarP(&setup.Key, "key", "k", "", "API Key for the service you are deploying to")
@@ -37,6 +37,7 @@ func init() {
 }
 
 type Setup struct {
+	AppName     string
 	Branch      string
 	Environment string
 	Key         string
@@ -46,7 +47,9 @@ type Setup struct {
 func (s Setup) Run() error {
 	green := color.New(color.FgGreen).SprintFunc()
 
-	serverName = "Test-App"
+	projectName = s.AppName
+	serverName = fmt.Sprintf("%s-%s", projectName, s.Environment)
+
 	fmt.Printf("==> Provisioning server: %v.\n", green(serverName))
 	g := makr.New()
 	g.Add(makr.Func{
@@ -59,16 +62,19 @@ func (s Setup) Run() error {
 			return validateDockerMachine()
 		},
 	})
-
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return createCloudServer(data)
 		},
 	})
-
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return createSwapFile()
+		},
+	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			return createDeployKeys()
 		},
 	})
 
@@ -109,7 +115,7 @@ func createCloudServer(d makr.Data) error {
 
 	cmd.Run()
 	// fmt.Printf("CMD: %v\n", cmd)
-	emoji.Println("==> Server creation completed!")
+	fmt.Println("==> Server creation completed!")
 	return nil
 }
 
@@ -126,13 +132,25 @@ func createSwapFile() error {
 	return nil
 }
 
+func createDeployKeys() error {
+	fmt.Println("==> Creating Deploy Key")
+	cmd := fmt.Sprintf("bash -c \"echo | ssh-keygen -q -N '' -t rsa -b 4096 -C 'deploy@%s'\"", projectName)
+	remoteCmd(cmd)
+
+	fmt.Println("\nPlease add this to your project's deploy keys on Github or Gitlab:")
+	remoteCmd("tail .ssh/id_rsa.pub")
+
+	return nil
+}
+
 func remoteCmd(cmd string) error {
+	fmt.Println("DEBUG: remoteCmd:", cmd)
 	c := exec.Command("docker-machine", "ssh", serverName, cmd)
-	b, err := c.CombinedOutput()
-	if err != nil {
-		fmt.Print(string(b))
-		return errors.WithStack(err)
-	}
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Stdin = os.Stdin
+
+	c.Run()
 
 	return nil
 }

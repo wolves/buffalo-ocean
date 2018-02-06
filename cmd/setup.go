@@ -179,7 +179,7 @@ func setupProject(d makr.Data) error {
 	remoteCmd(fmt.Sprintf("docker run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
 
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
-	remoteCmd(fmt.Sprintf("docker run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e %s -e %s -d buffaloimage", buffaloEnv, dbURL))
+	remoteCmd(fmt.Sprintf("docker run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
 	emoji.Printf(":beers: %s", magenta("Setup complete! Your server is ready to receive deploys."))
 	return nil

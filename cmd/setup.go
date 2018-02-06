@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/structs"
 	"github.com/gobuffalo/makr"
 	"github.com/spf13/cobra"
+	emoji "gopkg.in/kyokomi/emoji.v1"
 )
 
 // setupCmd represents the setup command
@@ -101,8 +102,7 @@ func requestUserInput(msg string) string {
 func createCloudServer(d makr.Data) error {
 	green := color.New(color.FgGreen).SprintFunc()
 
-	color.Blue("==> Deploying: %s\n", green(serverName))
-	color.Blue("==> Creating docker machine: %s\n", green(serverName))
+	color.Blue("\n==> Creating docker machine: %s\n", green(serverName))
 
 	var k string
 	if d["Key"] != "" {
@@ -168,6 +168,7 @@ func cloneProject() error {
 }
 
 func setupProject(d makr.Data) error {
+	magenta := color.New(color.FgMagenta).SprintFunc()
 	color.Blue("\n==> Setting Up Project")
 
 	buffaloEnv := d["Environment"].(string)
@@ -180,6 +181,7 @@ func setupProject(d makr.Data) error {
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	remoteCmd(fmt.Sprintf("docker run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e %s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
+	emoji.Printf(":beers: %s", magenta("Setup complete! Your server is ready to receive deploys."))
 	return nil
 }
 

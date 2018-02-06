@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"fmt"
 	"os/exec"
 
 	"github.com/pkg/errors"
@@ -9,13 +9,12 @@ import (
 
 func validateGit() error {
 	c := exec.Command("git", "status")
-	c.Stdin = os.Stdin
-	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	err := c.Run()
+	b, err := c.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(b))
 		return errors.Wrap(err, "Must be a valid Git application")
 	}
+
 	return nil
 }
 

@@ -107,11 +107,6 @@ func provisionProcess(d Deploy) error {
 			return setupProject(data)
 		},
 	})
-	g.Add(makr.Func{
-		Runner: func(root string, data makr.Data) error {
-			return deployProject()
-		},
-	})
 
 	return g.Run(".", structs.Map(d))
 }
@@ -133,7 +128,7 @@ func deployProcess(d Deploy) error {
 	})
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
-			return deployProject()
+			return deployProject(data)
 		},
 	})
 
@@ -246,13 +241,15 @@ func updateProject(d makr.Data) error {
 	return nil
 }
 
-func deployProject() error {
+func deployProject(d makr.Data) error {
 	color.Blue("\n==> Deploying Project")
-	cmds := []string{"docker exec -i buffaloweb buffalo setup -u"}
-	cmds = append(cmds, "docker exec -i buffaloweb buffalo db migrate")
-	cmds = append(cmds, "docker exec -i buffaloweb buffalo build --static -o /bin/app")
-	cmds = append(cmds, "docker exec -i buffaloweb killall app")
-	cmds = append(cmds, "docker exec -it buffaloweb ./app")
+	buffaloEnv := d["Environment"].(string)
+	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
+
+	cmds := []string{"docker container stop buffaloweb"}
+	cmds = append(cmds, "docker container rm buffaloweb")
+	cmds = append(cmds, "docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
+	cmds = append(cmds, fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
 	for _, cmd := range cmds {
 		if err := remoteCmd(cmd); err != nil {
@@ -260,4 +257,7 @@ func deployProject() error {
 		}
 	}
 	return nil
+}
+
+func displayServerInfo() {
 }

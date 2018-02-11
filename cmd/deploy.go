@@ -214,14 +214,13 @@ func setupProject(d makr.Data) error {
 
 	buffaloEnv := d["Environment"].(string)
 
-	// TODO: Check if the docker shit already exists. Don't want to remake it.
 	remoteCmd("docker network create --driver bridge buffalonet")
 	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
 
-	remoteCmd(fmt.Sprintf("docker run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
+	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
 
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
-	remoteCmd(fmt.Sprintf("docker run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
+	remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
 	return nil
 }

@@ -107,6 +107,11 @@ func provisionProcess(d Deploy) error {
 			return setupProject(data)
 		},
 	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			return displayServerInfo()
+		},
+	})
 
 	return g.Run(".", structs.Map(d))
 }
@@ -129,6 +134,11 @@ func deployProcess(d Deploy) error {
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return deployProject(data)
+		},
+	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			return displayServerInfo()
 		},
 	})
 
@@ -180,8 +190,6 @@ func createSwapFile() error {
 }
 
 func createDeployKeys() error {
-	magenta := color.New(color.FgMagenta).SprintFunc()
-
 	color.Blue("\n==> Creating Deploy Key")
 	cmd := fmt.Sprintf("bash -c \"echo | ssh-keygen -q -N '' -t rsa -b 4096 -C 'deploy@%s'\"", projectName)
 	remoteCmd(cmd)
@@ -190,7 +198,6 @@ func createDeployKeys() error {
 	remoteCmd("tail .ssh/id_rsa.pub")
 	fmt.Println("")
 
-	emoji.Printf("\n========= :beers: %s =========\n", magenta("INITIAL SETUP COMPLETE"))
 	return nil
 }
 
@@ -210,11 +217,14 @@ func cloneProject() error {
 }
 
 func setupProject(d makr.Data) error {
-	color.Blue("\n==> Setting Up Project")
+	magenta := color.New(color.FgMagenta).SprintFunc()
+	color.Blue("\n==> Setting Up Project. This may take a few minutes.")
 
 	buffaloEnv := d["Environment"].(string)
 
-	remoteCmd("docker network create --driver bridge buffalonet")
+	if err := remoteCmd("docker network create --driver bridge buffalonet"); err != nil {
+		return errors.WithStack(err)
+	}
 	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
 
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
@@ -222,6 +232,7 @@ func setupProject(d makr.Data) error {
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
+	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"))
 	return nil
 }
 
@@ -241,6 +252,7 @@ func updateProject(d makr.Data) error {
 }
 
 func deployProject(d makr.Data) error {
+	magenta := color.New(color.FgMagenta).SprintFunc()
 	color.Blue("\n==> Deploying Project")
 	buffaloEnv := d["Environment"].(string)
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
@@ -255,8 +267,15 @@ func deployProject(d makr.Data) error {
 			return errors.WithStack(err)
 		}
 	}
+
+	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("DEPLOYMENT COMPLETE"))
 	return nil
 }
 
-func displayServerInfo() {
+func displayServerInfo() error {
+	ip, _ := exec.Command("docker-machine", "ip", serverName).Output()
+	fmt.Printf("\nssh root@%s -i ~/.docker/machine/machines/%s/id_rsa", strings.TrimSpace(string(ip)), serverName)
+	fmt.Printf("\nopen http://%s\n", ip)
+
+	return nil
 }

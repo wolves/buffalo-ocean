@@ -222,6 +222,15 @@ func setupProject(d makr.Data) error {
 
 	buffaloEnv := d["Environment"].(string)
 
+	// Copy over .env file from local project to buffaloproject
+	env := "./.env"
+	if _, err := os.Stat(env); err == nil {
+		copyFileToRemoteProject(env)
+	} else {
+		fmt.Println("FILE DOESN'T EXIST")
+		return errors.WithStack(err)
+	}
+
 	if err := remoteCmd("docker network create --driver bridge buffalonet"); err != nil {
 		return errors.WithStack(err)
 	}

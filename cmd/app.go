@@ -32,6 +32,21 @@ func remoteCmd(cmd string) error {
 	return nil
 }
 
+func copyFileToRemoteProject(file string) error {
+	fmt.Println("DEBUG: Copy File:", file)
+	p := fmt.Sprintf("%s:~/buffaloproject/", serverName)
+	c := exec.Command("docker-machine", "scp", file, p)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Stdin = os.Stdin
+
+	if err := c.Run(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func validateGit() error {
 	c := exec.Command("git", "status")
 	b, err := c.CombinedOutput()

@@ -213,15 +213,6 @@ func cloneProject() error {
 	// TODO: Check for database.yml file
 	remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
 
-	return nil
-}
-
-func setupProject(d makr.Data) error {
-	magenta := color.New(color.FgMagenta).SprintFunc()
-	color.Blue("\n==> Setting Up Project. This may take a few minutes.")
-
-	buffaloEnv := d["Environment"].(string)
-
 	// Copy over .env file from local project to buffaloproject
 	env := "./.env"
 	if _, err := os.Stat(env); err == nil {
@@ -230,6 +221,15 @@ func setupProject(d makr.Data) error {
 		fmt.Println("FILE DOESN'T EXIST")
 		return errors.WithStack(err)
 	}
+
+	return nil
+}
+
+func setupProject(d makr.Data) error {
+	magenta := color.New(color.FgMagenta).SprintFunc()
+	color.Blue("\n==> Setting Up Project. This may take a few minutes.")
+
+	buffaloEnv := d["Environment"].(string)
 
 	if err := remoteCmd("docker network create --driver bridge buffalonet"); err != nil {
 		return errors.WithStack(err)

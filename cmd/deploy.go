@@ -213,15 +213,6 @@ func cloneProject() error {
 	// TODO: Check for database.yml file
 	remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
 
-	// Copy over .env file from local project to buffaloproject
-	env := "./.env"
-	if _, err := os.Stat(env); err == nil {
-		copyFileToRemoteProject(env)
-	} else {
-		fmt.Println("FILE DOESN'T EXIST")
-		return errors.WithStack(err)
-	}
-
 	return nil
 }
 

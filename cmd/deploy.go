@@ -245,8 +245,13 @@ func setupEnvVars() error {
 		return errors.WithStack(err)
 	}
 
-	remoteCmd("docker container run -it --env-file=./env.list buffaloweb env")
+	if err := copyFileToRemoteProject("./env.list"); err != nil {
+		return errors.WithStack(err)
+	}
 
+	if err := remoteCmd("docker container run -it --env-file=env.list buffaloweb env"); err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 

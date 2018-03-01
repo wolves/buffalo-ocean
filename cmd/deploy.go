@@ -210,7 +210,7 @@ func cloneProject() error {
 	remoteCmd("ssh-keyscan github.com >> ~/.ssh/known_hosts")
 	remoteCmd(fmt.Sprintf("bash -c \"yes yes | git clone %s buffaloproject\"", r))
 
-	// TODO: Check for database.yml file
+	// TODO: Check for database.yml file and check if database.yml.example exists
 	remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
 
 	return nil
@@ -232,7 +232,42 @@ func setupProject(d makr.Data) error {
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
 
+	if err := setupEnvVars(); err != nil {
+		return errors.WithStack(err)
+	}
+
 	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"))
+	return nil
+}
+
+func setupEnvVars() error {
+	if err := gatherEnvVars(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	remoteCmd("docker container run -it --env-file=./env.list buffaloweb env")
+
+	return nil
+}
+
+func gatherEnvVars() error {
+	ev := requestUserInput("Enter the ENV variables for your project:")
+	e := strings.Split(ev, " ")
+	fmt.Printf("ENV VARIABLES:\t%T\t%s\t%v\n", e, e, len(e))
+
+	f, err := os.Create("./env.list")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer f.Close()
+
+	for _, s := range e {
+		sn := fmt.Sprintf("%s\n", s)
+		if _, err := f.WriteString(sn); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	return nil
 }
 

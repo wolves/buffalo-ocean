@@ -229,36 +229,21 @@ func setupProject(d makr.Data) error {
 
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
 
-	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
-	remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
-
 	if err := setupEnvVars(); err != nil {
 		return errors.WithStack(err)
 	}
 
+	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
+	if err := remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)); err != nil {
+		return errors.WithStack(err)
+	}
 	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"))
 	return nil
 }
 
 func setupEnvVars() error {
-	if err := gatherEnvVars(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if err := copyFileToRemoteProject("./env.list"); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if err := remoteCmd("docker container run -it --env-file=./env.list buffaloweb env"); err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func gatherEnvVars() error {
 	ev := requestUserInput("Enter the ENV variables for your project:")
 	e := strings.Split(ev, " ")
-	fmt.Printf("ENV VARIABLES:\t%T\t%s\t%v\n", e, e, len(e))
 
 	f, err := os.Create("./env.list")
 	if err != nil {
@@ -271,6 +256,10 @@ func gatherEnvVars() error {
 		if _, err := f.WriteString(sn); err != nil {
 			return errors.WithStack(err)
 		}
+	}
+
+	if err := copyFileToRemoteProject("./env.list"); err != nil {
+		return errors.WithStack(err)
 	}
 
 	return nil

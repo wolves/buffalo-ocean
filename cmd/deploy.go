@@ -237,12 +237,19 @@ func setupProject(d makr.Data) error {
 	if err := remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)); err != nil {
 		return errors.WithStack(err)
 	}
+
+	if _, err := os.Stat("./env.list"); err == nil {
+		if err := os.Remove("./env.list"); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"))
 	return nil
 }
 
 func setupEnvVars() error {
-	ev := requestUserInput("Enter the ENV variables for your project:")
+	ev := requestUserInput("Enter the ENV variables for your project with a space between each: (eg. SAMPLE=test FOO=bar)")
 	e := strings.Split(ev, " ")
 
 	f, err := os.Create("./env.list")

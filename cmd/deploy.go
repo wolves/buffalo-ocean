@@ -40,6 +40,7 @@ var projectName string
 var serverName string
 
 func init() {
+
 	deployCmd.Flags().StringVarP(&deploy.AppName, "app-name", "a", "", "The name for the application")
 	deployCmd.Flags().StringVarP(&deploy.Branch, "branch", "b", "master", "Branch to use for deployment")
 	deployCmd.Flags().StringVarP(&deploy.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
@@ -64,7 +65,6 @@ func (d Deploy) Run() error {
 			return errors.WithStack(err)
 		}
 	}
-	// return runMigrations(serverName)
 	return nil
 }
 
@@ -147,6 +147,7 @@ func deployProcess(d Deploy) error {
 }
 
 func createCloudServer(d makr.Data) error {
+
 	green := color.New(color.FgGreen).SprintFunc()
 
 	color.Blue("\n==> Creating docker machine: %s\n", green(serverName))
@@ -182,9 +183,11 @@ func createSwapFile() error {
 	cmds = append(cmds, "mkswap /swapfile")
 	cmds = append(cmds, "chmod 600 /swapfile")
 	cmds = append(cmds, "swapon /swapfile")
+	cmds = append(cmds, "bash -c \"echo '/swapfile       none    swap    sw      0       0 ' >> /etc/fstab\"")
 
-	remoteCmd(strings.Join(cmds[:], " && "))
-	remoteCmd("bash -c \"echo '/swapfile       none    swap    sw      0       0 ' >> /etc/fstab\"")
+	if err := remoteCmd(strings.Join(cmds[:], " && ")); err != nil {
+		return errors.WithStack(err)
+	}
 
 	return nil
 }
@@ -192,9 +195,12 @@ func createSwapFile() error {
 func createDeployKeys() error {
 	color.Blue("\n==> Creating Deploy Key")
 	cmd := fmt.Sprintf("bash -c \"echo | ssh-keygen -q -N '' -t rsa -b 4096 -C 'deploy@%s'\"", projectName)
-	remoteCmd(cmd)
 
-	color.Yellow("\nPlease add this to your project's deploy keys on Github or Gitlab:")
+	if err := remoteCmd(cmd); err != nil {
+		return errors.WithStack(err)
+	}
+
+	color.Yellow("\n\nPlease add this to your project's deploy keys on Github or Gitlab:")
 	remoteCmd("tail .ssh/id_rsa.pub")
 	fmt.Println("")
 
@@ -202,31 +208,44 @@ func createDeployKeys() error {
 }
 
 func cloneProject() error {
+	// TODO: Check docker-machine if it has git to determine if this is needed
 	remoteCmd("apt-get install git")
 
-	color.Blue("\n==> Cloning Project")
 	r := requestUserInput("Please enter the repo to deploy from (Example: git@github.com:username/project.git):")
 
-	remoteCmd("ssh-keyscan github.com >> ~/.ssh/known_hosts")
-	remoteCmd(fmt.Sprintf("bash -c \"yes yes | git clone %s buffaloproject\"", r))
+	color.Blue("\n==> Cloning Project")
+
+	if err := remoteCmd("ssh-keyscan github.com >> ~/.ssh/known_hosts"); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := remoteCmd(fmt.Sprintf("bash -c \"yes yes | git clone %s buffaloproject\"", r)); err != nil {
+		return errors.WithStack(err)
+	}
 
 	// TODO: Check for database.yml file and check if database.yml.example exists
-	remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
+	if _, err := os.Stat("./database.yml"); err == nil {
+		remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
+	}
 
 	return nil
 }
 
 func setupProject(d makr.Data) error {
+	green := color.New(color.FgGreen).SprintFunc()
 	magenta := color.New(color.FgMagenta).SprintFunc()
-	color.Blue("\n==> Setting Up Project. This may take a few minutes.")
+	blue := color.New(color.FgBlue).SprintFunc()
+	color.Blue("\n==> Setting Up Project. (This may take a few minutes)")
 
 	buffaloEnv := d["Environment"].(string)
 
-	if err := remoteCmd("docker network create --driver bridge buffalonet"); err != nil {
-		return errors.WithStack(err)
-	}
+	color.Blue("\n==> CREATING: %s", green("Docker Network"))
+	remoteCmd("docker network create --driver bridge buffalonet")
+
+	color.Blue("\n==> CREATING: %s", green("Docker Image"))
 	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
 
+	color.Blue("\n==> CREATING: %s", green("Docker Database Container"))
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
 
 	if err := setupEnvVars(); err != nil {
@@ -234,6 +253,7 @@ func setupProject(d makr.Data) error {
 	}
 
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
+	color.Blue("\n==> CREATING: %s", green("Docker Web Container"))
 	if err := remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)); err != nil {
 		return errors.WithStack(err)
 	}
@@ -244,7 +264,7 @@ func setupProject(d makr.Data) error {
 		}
 	}
 
-	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"))
+	emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("========="))
 	return nil
 }
 

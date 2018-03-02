@@ -13,13 +13,12 @@ import (
 
 func requestUserInput(msg string) string {
 	reader := bufio.NewReader(os.Stdin)
-	color.Yellow(msg)
+	color.Yellow("\n%s", msg)
 	key, _ := reader.ReadString('\n')
 	return strings.TrimSpace(key)
 }
 
 func remoteCmd(cmd string) error {
-	fmt.Println("DEBUG: remoteCmd:", cmd)
 	c := exec.Command("docker-machine", "ssh", serverName, cmd)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -28,12 +27,10 @@ func remoteCmd(cmd string) error {
 	if err := c.Run(); err != nil {
 		return errors.WithStack(err)
 	}
-
 	return nil
 }
 
 func copyFileToRemoteProject(file string) error {
-	fmt.Println("DEBUG: Copy File:", file)
 	p := fmt.Sprintf("%s:~/buffaloproject/", serverName)
 	c := exec.Command("docker-machine", "scp", file, p)
 	c.Stdout = os.Stdout

@@ -124,6 +124,7 @@ func provisionProcess(d Deploy) error {
 func deployProcess(d Deploy) error {
 	// TODO: Code a better way for checking if setup has been completed
 	isSetup := validateProjectIsSetup()
+	// machineIsRunning := validateMachineIsRunning(serverName)
 
 	if !isSetup {
 		provisionProcess(d)
@@ -315,6 +316,7 @@ func updateProject(d makr.Data) error {
 func deployProject(d makr.Data) error {
 	magenta := color.New(color.FgMagenta).SprintFunc()
 	color.Blue("\n==> Deploying Project")
+
 	buffaloEnv := d["Environment"].(string)
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 

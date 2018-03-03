@@ -62,6 +62,21 @@ func validateDockerMachine() error {
 	return nil
 }
 
+func validateMachineIsRunning(n string) bool {
+
+}
+
+func validateMachineNameUnique(n string) error {
+	out, _ := exec.Command("docker-machine", "ls").Output()
+
+	if r := strings.Contains(string(out), n); r {
+		err := color.RedString("A Docker machine with that name already exists")
+		return errors.New(err)
+	}
+
+	return nil
+}
+
 func validateProjectIsSetup() bool {
 	cmd := "docker ps"
 	out, _ := exec.Command("docker-machine", "ssh", serverName, cmd).Output()

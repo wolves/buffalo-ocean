@@ -84,6 +84,11 @@ func provisionProcess(d Deploy) error {
 	})
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
+			return validateMachineNameUnique(serverName)
+		},
+	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
 			return createCloudServer(data)
 		},
 	})

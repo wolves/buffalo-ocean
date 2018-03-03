@@ -63,7 +63,7 @@ func validateDockerMachine() error {
 }
 
 func validateMachineIsRunning(n string) bool {
-
+	return true
 }
 
 func validateMachineNameUnique(n string) error {

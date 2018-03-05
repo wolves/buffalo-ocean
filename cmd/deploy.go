@@ -52,9 +52,12 @@ func init() {
 }
 
 func (d Deploy) Run() error {
-
 	projectName = d.AppName
 	serverName = fmt.Sprintf("%s-%s", projectName, d.Environment)
+
+	if msg, ok := validateMachine("machineInstalled", serverName); !ok {
+		return errors.New(msg)
+	}
 
 	if d.Init {
 		if err := provisionProcess(d); err != nil {
@@ -70,7 +73,8 @@ func (d Deploy) Run() error {
 
 func provisionProcess(d Deploy) error {
 	green := color.New(color.FgGreen).SprintFunc()
-	color.Blue("\n==> Provisioning server: %v.\n", green(serverName))
+	color.Blue("\n==> PROVISIONING SERVER: %v.\n", green(serverName))
+
 	g := makr.New()
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
@@ -79,12 +83,10 @@ func provisionProcess(d Deploy) error {
 	})
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
-			return validateDockerMachine()
-		},
-	})
-	g.Add(makr.Func{
-		Runner: func(root string, data makr.Data) error {
-			return validateMachineNameUnique(serverName)
+			if msg, ok := validateMachine("isUnique", serverName); !ok {
+				return errors.New(msg)
+			}
+			return nil
 		},
 	})
 	g.Add(makr.Func{
@@ -122,16 +124,27 @@ func provisionProcess(d Deploy) error {
 }
 
 func deployProcess(d Deploy) error {
-	// TODO: Code a better way for checking if setup has been completed
-	isSetup := validateProjectIsSetup()
-	// machineIsRunning := validateMachineIsRunning(serverName)
 
-	if !isSetup {
-		provisionProcess(d)
-	}
+	green := color.New(color.FgGreen).SprintFunc()
+	color.Blue("\n==> DEPLOYING TO SERVER: %v.\n", green(serverName))
 
-	color.Blue("\n========= DEPLOYING =========")
 	g := makr.New()
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			if msg, ok := validateMachine("isStopped", serverName); ok {
+				return errors.New(msg)
+			}
+			return nil
+		},
+	})
+	g.Add(makr.Func{
+		Runner: func(root string, data makr.Data) error {
+			if msg, ok := validateMachine("isSetup", serverName); !ok {
+				return errors.New(msg)
+			}
+			return nil
+		},
+	})
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return updateProject(data)

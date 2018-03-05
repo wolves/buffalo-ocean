@@ -55,32 +55,47 @@ func validateGit() error {
 	return nil
 }
 
-func validateDockerMachine() error {
-	if _, err := exec.LookPath("docker-machine"); err != nil {
-		return errors.New("Docker is not installed. https://docs.docker.com/install/")
+func validateMachine(t string, n string) (string, bool) {
+	var msg string
+	var rsp bool
+
+	switch t {
+	case "machineInstalled":
+		rsp = validateDockerMachineInstalled()
+		msg = color.RedString("Docker is not installed. https://docs.docker.com/install/")
+	case "isUnique":
+		rsp = !validateMachineNameUnique(n)
+		msg = color.RedString("A Docker machine with that name already exists")
+	case "isStopped":
+		rsp = validateMachineIsStopped(n)
+		msg = color.RedString("It appears your Docker Machine with name \"%s\" is currently stopped.", n)
+	case "isSetup":
+		rsp = validateMachineProjectIsSetup(n)
+		msg = color.RedString("The containers on the Docker Machine named \"%s\" do not appear to be setup yet or are not running. Either restart containers before deploying or run \"setup\" instead of \"deploy\".", n)
+	default:
+		rsp = false
+		msg = color.RedString("Not a valid Docker Machine check")
 	}
-	return nil
+
+	return msg, rsp
 }
 
-func validateMachineIsRunning(n string) bool {
-	return true
+func validateDockerMachineInstalled() bool {
+	_, err := exec.LookPath("docker-machine")
+	return err == nil
 }
 
-func validateMachineNameUnique(n string) error {
+func validateMachineIsStopped(n string) bool {
+	out, _ := exec.Command("docker-machine", "status", n).Output()
+	return strings.Contains(string(out), "Stopped")
+}
+
+func validateMachineNameUnique(n string) bool {
 	out, _ := exec.Command("docker-machine", "ls").Output()
-
-	if r := strings.Contains(string(out), n); r {
-		err := color.RedString("A Docker machine with that name already exists")
-		return errors.New(err)
-	}
-
-	return nil
+	return strings.Contains(string(out), n)
 }
 
-func validateProjectIsSetup() bool {
-	cmd := "docker ps"
-	out, _ := exec.Command("docker-machine", "ssh", serverName, cmd).Output()
-
-	lc := strings.Count(string(out), "\n")
-	return lc == 3
+func validateMachineProjectIsSetup(n string) bool {
+	out, _ := exec.Command("docker-machine", "ssh", n, "docker ps").Output()
+	return 3 == strings.Count(string(out), "\n")
 }

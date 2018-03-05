@@ -16,6 +16,14 @@ var oceanCmd = &cobra.Command{
 	},
 }
 
+type Project struct {
+	AppName     string
+	Branch      string
+	Environment string
+	Key         string
+	Tag         string
+}
+
 func init() {
 	rootCmd.AddCommand(oceanCmd)
 }

@@ -54,3 +54,11 @@ func validateGit() error {
 
 	return nil
 }
+
+func displayServerInfo() error {
+	ip, _ := exec.Command("docker-machine", "ip", serverName).Output()
+	fmt.Printf("\nssh root@%s -i ~/.docker/machine/machines/%s/id_rsa", strings.TrimSpace(string(ip)), serverName)
+	fmt.Printf("\nopen http://%s\n", ip)
+
+	return nil
+}

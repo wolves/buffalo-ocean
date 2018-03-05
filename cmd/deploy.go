@@ -46,7 +46,6 @@ func init() {
 	deployCmd.Flags().StringVarP(&deploy.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
 	deployCmd.Flags().BoolVar(&deploy.Init, "init", false, "Initialize the server along with deployment. Run this the first time.")
 	deployCmd.Flags().StringVarP(&deploy.Key, "key", "k", "", "API Key for the service you are deploying to")
-	deployCmd.Flags().StringVarP(&deploy.Service, "service", "s", "digitalocean", "Service for deploying to")
 	deployCmd.Flags().StringVarP(&deploy.Tag, "tag", "t", "", "Tag to use for deployment. Overrides banch.")
 	oceanCmd.AddCommand(deployCmd)
 }

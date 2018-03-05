@@ -1,6 +1,6 @@
 # buffalo-ocean
 
-A plugin for [https://gobuffalo.io](https://gobuffalo.io) that makes deploying to DigitalOcean easier.
+A plugin for [https://gobuffalo.io](https://gobuffalo.io) that makes deploying to [DigitalOcean](https://m.do.co/c/5a05a824f992) easier.
 
 *It assumes you are using Docker to deploy*
 
@@ -25,7 +25,7 @@ This command will setup and create a new DigitalOcean server droplet for you and
 
 ## Deploying
 
-The initial `setup` command will do a deploy at the end, but anytime after that initial setup, you'll want to use the `buffalo heroku deploy` command to push a new version of your application, it'll even run your migrations for you as-long-as that step is provided in your projects Dockerfile.
+The initial `setup` command will do a deploy at the end, but anytime after that initial setup, you'll want to use the `buffalo ocean deploy` command to push a new version of your application, it'll even run your migrations for you as-long-as that step is provided in your projects Dockerfile.
 
 ```bash
 $ buffalo ocean deploy --app-name YOURAPP

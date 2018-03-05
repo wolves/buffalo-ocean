@@ -23,7 +23,7 @@ func validateMachine(t string, n string) (string, bool) {
 		msg = color.RedString("\nIt appears your Docker Machine with name \"%s\" is currently stopped.", n)
 	case "isSetup":
 		rsp = validateMachineProjectIsSetup(n)
-		msg = color.RedString("\nThe containers on the Docker Machine named \"%s\" do not appear to be setup yet or are not running. Either restart containers before deploying or run deploy with the \"--init\" flag.", n)
+		msg = color.RedString("\nThe containers on the Docker Machine named \"%s\" do not appear to be setup yet or are not running. Either restart the containers before deploying or run the \"setup\" command first.", n)
 	default:
 		rsp = false
 		msg = color.RedString("\nNot a valid Docker Machine check")

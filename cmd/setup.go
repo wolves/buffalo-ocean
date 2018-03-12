@@ -192,6 +192,10 @@ func cloneProject() error {
 		return errors.WithStack(err)
 	}
 
+	if setup.Branch != "master" {
+		r = fmt.Sprintf("-b %s %s", setup.Branch, r)
+	}
+
 	if err := remoteCmd(fmt.Sprintf("bash -c \"yes yes | git clone %s buffaloproject\"", r)); err != nil {
 		return errors.WithStack(err)
 	}

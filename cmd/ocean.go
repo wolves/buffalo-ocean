@@ -20,6 +20,7 @@ type Project struct {
 	AppName     string
 	Branch      string
 	Environment string
+	SkipVars    bool
 	Key         string
 	Tag         string
 }

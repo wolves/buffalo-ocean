@@ -33,6 +33,7 @@ func init() {
 	setupCmd.Flags().StringVarP(&setup.Branch, "branch", "b", "master", "Branch to use for deployment")
 	setupCmd.Flags().StringVarP(&setup.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
 	setupCmd.Flags().StringVarP(&setup.Tag, "tag", "t", "", "Tag to use for deployment. Overrides banch.")
+	setupCmd.Flags().BoolVar(&setup.SkipVars, "skip-envs", false, "Skip the environment variable setting step")
 	oceanCmd.AddCommand(setupCmd)
 }
 
@@ -89,11 +90,25 @@ func provisionProcess(p Project) error {
 			return cloneProject()
 		},
 	})
+	if !setup.SkipVars {
+		g.Add(makr.Func{
+			Runner: func(root string, data makr.Data) error {
+				return setupEnvVars()
+			},
+		})
+	}
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return setupProject(data)
 		},
 	})
+	if !setup.SkipVars {
+		g.Add(makr.Func{
+			Runner: func(root string, data makr.Data) error {
+				return cleanupEnvListFile()
+			},
+		})
+	}
 	g.Add(makr.Func{
 		Runner: func(root string, data makr.Data) error {
 			return displayServerInfo()
@@ -170,6 +185,7 @@ func cloneProject() error {
 
 	r := requestUserInput("Please enter the repo to deploy from (Example: git@github.com:username/project.git):")
 
+	// TODO: Sort out how to build the image from the branch specified
 	color.Blue("\n==> Cloning Project")
 
 	if err := remoteCmd("ssh-keyscan github.com >> ~/.ssh/known_hosts"); err != nil {
@@ -205,20 +221,17 @@ func setupProject(d makr.Data) error {
 	color.Blue("\n==> CREATING: %s", green("Docker Database Container"))
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
 
-	if err := setupEnvVars(); err != nil {
-		return errors.WithStack(err)
-	}
-
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	color.Blue("\n==> CREATING: %s", green("Docker Web Container"))
-	if err := remoteCmd(fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)); err != nil {
-		return errors.WithStack(err)
-	}
 
-	if _, err := os.Stat("./env.list"); err == nil {
-		if err := os.Remove("./env.list"); err != nil {
-			return errors.WithStack(err)
-		}
+	var webContainerCmd string
+	if !setup.SkipVars {
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
+	} else {
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
+	}
+	if err := remoteCmd(webContainerCmd); err != nil {
+		return errors.WithStack(err)
 	}
 
 	emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("========="))
@@ -246,5 +259,14 @@ func setupEnvVars() error {
 		return errors.WithStack(err)
 	}
 
+	return nil
+}
+
+func cleanupEnvListFile() error {
+	if _, err := os.Stat("./env.list"); err == nil {
+		if err := os.Remove("./env.list"); err != nil {
+			return errors.WithStack(err)
+		}
+	}
 	return nil
 }

@@ -32,7 +32,7 @@ func init() {
 	setupCmd.Flags().StringVarP(&setup.Key, "key", "k", "", "API Key for the service you are deploying to")
 	setupCmd.Flags().StringVarP(&setup.Branch, "branch", "b", "master", "Branch to use for deployment")
 	setupCmd.Flags().StringVarP(&setup.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
-	setupCmd.Flags().StringVarP(&setup.Tag, "tag", "t", "", "Tag to use for deployment. Overrides banch.")
+	setupCmd.Flags().StringVarP(&setup.Tag, "tag", "t", "", "Tag to use for deployment. Overrides branch.")
 	setupCmd.Flags().BoolVar(&setup.SkipVars, "skip-envs", false, "Skip the environment variable setting step")
 	oceanCmd.AddCommand(setupCmd)
 }
@@ -192,8 +192,12 @@ func cloneProject() error {
 		return errors.WithStack(err)
 	}
 
-	if setup.Branch != "master" {
-		r = fmt.Sprintf("-b %s %s", setup.Branch, r)
+	if setup.Tag != "" {
+		r = fmt.Sprintf("-b %s %s", setup.Tag, r)
+	} else {
+		if setup.Branch != "master" {
+			r = fmt.Sprintf("-b %s %s", setup.Branch, r)
+		}
 	}
 
 	if err := remoteCmd(fmt.Sprintf("bash -c \"yes yes | git clone %s buffaloproject\"", r)); err != nil {

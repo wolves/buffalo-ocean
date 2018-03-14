@@ -256,6 +256,13 @@ func setupCaddy() error {
 	green := color.New(color.FgGreen).SprintFunc()
 	color.Blue("\n==> CREATING: %s", green("Docker Caddy Container"))
 
+	s := `
+	IMPORTANT:: Before proceeding with SSL setup be sure to go to
+	https://cloud.digitalocean.com/networking/domains and ensure that
+	the domain you will be using for SSL is pointing to your newly created machine.
+	Once you have done this press ENTER to continue.
+	`
+	_ = requestUserInput(s)
 	d := requestUserInput("Enter your site domain for SSL (Example: mydomain.com):")
 	e := requestUserInput("Enter your email for SSL:")
 

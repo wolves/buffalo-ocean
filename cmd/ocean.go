@@ -21,6 +21,7 @@ type Project struct {
 	Branch      string
 	Environment string
 	SkipVars    bool
+	SkipSSL     bool
 	Key         string
 	Tag         string
 }

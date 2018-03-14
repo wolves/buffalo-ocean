@@ -33,7 +33,8 @@ func init() {
 	setupCmd.Flags().StringVarP(&setup.Branch, "branch", "b", "master", "Branch to use for deployment")
 	setupCmd.Flags().StringVarP(&setup.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
 	setupCmd.Flags().StringVarP(&setup.Tag, "tag", "t", "", "Tag to use for deployment. Overrides branch.")
-	setupCmd.Flags().BoolVar(&setup.SkipVars, "skip-envs", false, "Skip the environment variable setting step")
+	setupCmd.Flags().BoolVar(&setup.SkipVars, "skip-envs", false, "Skip the environment variable settup step")
+	setupCmd.Flags().BoolVar(&setup.SkipSSL, "skip-ssl", false, "Skip the SSL setup step")
 	oceanCmd.AddCommand(setupCmd)
 }
 
@@ -241,8 +242,10 @@ func setupProject(d makr.Data) error {
 		return errors.WithStack(err)
 	}
 
-	if err := setupCaddy(); err != nil {
-		return errors.WithStack(err)
+	if !setup.SkipSSL {
+		if err := setupCaddy(); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("========="))

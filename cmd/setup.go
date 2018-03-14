@@ -241,11 +241,9 @@ func setupProject(d makr.Data) error {
 		webContainerPort = "80"
 	}
 	if !setup.SkipVars {
-		webContainerCmd = fmt.Sprintf(`docker container run -it --name buffaloweb -v /root/buffaloproject:/app
-			-p %s:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage`, webContainerPort, buffaloEnv, dbURL)
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p %s:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", webContainerPort, buffaloEnv, dbURL)
 	} else {
-		webContainerCmd = fmt.Sprintf(`docker container run -it --name buffaloweb -v /root/buffaloproject:/app
-			-p %s:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage`, webContainerPort, buffaloEnv, dbURL)
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p %s:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", webContainerPort, buffaloEnv, dbURL)
 	}
 	if err := remoteCmd(webContainerCmd); err != nil {
 		return errors.WithStack(err)

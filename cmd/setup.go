@@ -185,7 +185,6 @@ func cloneProject() error {
 
 	r := requestUserInput("Please enter the repo to deploy from (Example: git@github.com:username/project.git):")
 
-	// TODO: Sort out how to build the image from the branch specified
 	color.Blue("\n==> Cloning Project")
 
 	if err := remoteCmd("ssh-keyscan github.com >> ~/.ssh/known_hosts"); err != nil {
@@ -234,15 +233,77 @@ func setupProject(d makr.Data) error {
 
 	var webContainerCmd string
 	if !setup.SkipVars {
-		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 3000:3000 --network=buffalonet --env-file /root/buffaloproject/env.list -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
 	} else {
-		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
+		webContainerCmd = fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 3000:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL)
 	}
 	if err := remoteCmd(webContainerCmd); err != nil {
 		return errors.WithStack(err)
 	}
 
+	if err := setupCaddy(); err != nil {
+		return errors.WithStack(err)
+	}
+
 	emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("========="))
+	return nil
+}
+
+func setupCaddy() error {
+	green := color.New(color.FgGreen).SprintFunc()
+	color.Blue("\n==> CREATING: %s", green("Docker Caddy Container"))
+
+	d := requestUserInput("Enter your site domain for SSL (Example: mydomain.com):")
+	e := requestUserInput("Enter your email for SSL:")
+
+	c := fmt.Sprintf("%s {\n\ttls %s\n\tproxy / http://127.0.0.1:3000 {\n\t\ttransparent\n\t\twebsocket\n\t}\n}\n", d, e)
+	f, err := os.Create("./Caddyfile")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(c); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := remoteCmd("sudo mkdir /etc/caddy/"); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := copyFileToMachine("./Caddyfile", "/etc/caddy/"); err != nil {
+		return errors.WithStack(err)
+	}
+
+	cmds := []string{"curl https://getcaddy.com | bash -s personal"}
+	cmds = append(cmds, "sudo chown root:root /usr/local/bin/caddy")
+	cmds = append(cmds, "sudo chmod 755 /usr/local/bin/caddy")
+	cmds = append(cmds, "sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/caddy")
+
+	cmds = append(cmds, "sudo chown -R root:www-data /etc/caddy")
+	cmds = append(cmds, "sudo mkdir /etc/ssl/caddy")
+	cmds = append(cmds, "sudo chown -R root:www-data /etc/ssl/caddy")
+	cmds = append(cmds, "sudo chmod 0770 /etc/ssl/caddy")
+
+	cmds = append(cmds, "sudo chown www-data:www-data /etc/caddy/Caddyfile")
+	cmds = append(cmds, "sudo chmod 444 /etc/caddy/Caddyfile")
+
+	cmds = append(cmds, "wget https://raw.githubusercontent.com/mholt/caddy/master/dist/init/linux-systemd/caddy.service")
+	cmds = append(cmds, "sudo cp caddy.service /etc/systemd/system/")
+	cmds = append(cmds, "sudo chown root:root /etc/systemd/system/caddy.service")
+	cmds = append(cmds, "sudo chmod 644 /etc/systemd/system/caddy.service")
+	cmds = append(cmds, "sudo systemctl daemon-reload")
+	cmds = append(cmds, "sudo systemctl start caddy.service")
+
+	if err := remoteCmd(strings.Join(cmds[:], " && ")); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if _, err := os.Stat("./Caddyfile"); err == nil {
+		if err := os.Remove("./Caddyfile"); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	return nil
 }
 

@@ -30,6 +30,20 @@ func remoteCmd(cmd string) error {
 	return nil
 }
 
+func copyFileToMachine(file, dir string) error {
+	d := fmt.Sprintf("%s:%s", serverName, dir)
+	c := exec.Command("docker-machine", "scp", file, d)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Stdin = os.Stdin
+
+	if err := c.Run(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func copyFileToRemoteProject(file string) error {
 	p := fmt.Sprintf("%s:~/buffaloproject/", serverName)
 	c := exec.Command("docker-machine", "scp", file, p)

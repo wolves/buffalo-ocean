@@ -222,12 +222,10 @@ func setupProject(d makr.Data) error {
 
 	color.Blue("\n==> CREATING: %s", green("Docker Network"))
 	remoteCmd("docker network create --driver bridge buffalonet")
-
-	color.Blue("\n==> CREATING: %s", green("Docker Image"))
-	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
-
 	color.Blue("\n==> CREATING: %s", green("Docker Database Container"))
 	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
+	color.Blue("\n==> CREATING: %s", green("Docker Image"))
+	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
 
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	color.Blue("\n==> CREATING: %s", green("Docker Web Container"))

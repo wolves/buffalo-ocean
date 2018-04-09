@@ -124,6 +124,8 @@ func deployProject(d makr.Data) error {
 		}
 	}
 
-	emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("DEPLOYMENT COMPLETE"))
+	if _, err := emoji.Printf("\n========= :beers: %s :beers: =========\n", magenta("DEPLOYMENT COMPLETE")); err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }

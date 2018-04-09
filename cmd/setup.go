@@ -144,7 +144,7 @@ func createCloudServer(d makr.Data) error {
 	cmd.Stdout = os.Stdout
 
 	if err := cmd.Run(); err != nil {
-		errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -174,7 +174,9 @@ func createDeployKeys() error {
 	}
 
 	color.Yellow("\n\nPlease add this to your project's deploy keys on Github or Gitlab:")
-	remoteCmd("tail .ssh/id_rsa.pub")
+	if err := remoteCmd("tail .ssh/id_rsa.pub"); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println("")
 
 	return nil
@@ -182,8 +184,9 @@ func createDeployKeys() error {
 
 func cloneProject() error {
 	// TODO: Check docker-machine if it has git to determine if this is needed
-	remoteCmd("apt-get install git")
-
+	if err := remoteCmd("apt-get install git"); err != nil {
+		return errors.WithStack(err)
+	}
 	r := requestUserInput("Please enter the repo to deploy from (Example: git@github.com:username/project.git):")
 
 	color.Blue("\n==> Cloning Project")
@@ -206,7 +209,9 @@ func cloneProject() error {
 
 	// TODO: Check for database.yml file and check if database.yml.example exists
 	if _, err := os.Stat("./database.yml"); err == nil {
-		remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\"")
+		if err := remoteCmd("bash -c \"cp buffaloproject/database.yml.example buffaloproject/database.yml\""); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil
@@ -221,12 +226,18 @@ func setupProject(d makr.Data) error {
 	buffaloEnv := d["Environment"].(string)
 
 	color.Blue("\n==> CREATING: %s", green("Docker Network"))
-	remoteCmd("docker network create --driver bridge buffalonet")
-	color.Blue("\n==> CREATING: %s", green("Docker Database Container"))
-	remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv))
-	color.Blue("\n==> CREATING: %s", green("Docker Image"))
-	remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
+	if err := remoteCmd("docker network create --driver bridge buffalonet"); err != nil {
+		return errors.WithStack(err)
+	}
 
+	color.Blue("\n==> CREATING: %s", green("Docker Database Container"))
+	if err := remoteCmd(fmt.Sprintf("docker container run -it --name buffalodb -v /root/db_volume:/var/lib/postgresql/data --network=buffalonet -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password -e POSTGRES_DB=buffalo_%s -d postgres", buffaloEnv)); err != nil {
+		return errors.WithStack(err)
+	}
+	color.Blue("\n==> CREATING: %s", green("Docker Image"))
+	if err := remoteCmd("docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject"); err != nil {
+		return errors.WithStack(err)
+	}
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 	color.Blue("\n==> CREATING: %s", green("Docker Web Container"))
 
@@ -253,7 +264,9 @@ func setupProject(d makr.Data) error {
 		}
 	}
 
-	emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("========="))
+	if _, err := emoji.Printf("\n%s :beers: %s :beers: %s\n", blue("========="), magenta("INITIAL SERVER SETUP & DEPLOYMENT COMPLETE"), blue("=========")); err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 

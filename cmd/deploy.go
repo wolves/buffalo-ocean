@@ -31,6 +31,7 @@ func init() {
 	deployCmd.Flags().StringVarP(&deploy.Branch, "branch", "b", "master", "Branch to use for deployment")
 	deployCmd.Flags().StringVarP(&deploy.Environment, "environment", "e", "production", "Setting for the GO_ENV variable")
 	deployCmd.Flags().StringVarP(&deploy.Tag, "tag", "t", "", "Tag to use for deployment. Overrides banch.")
+	deployCmd.Flags().BoolVar(&deploy.SkipSSL, "skip-ssl", false, "Skip the SSL setup step")
 	oceanCmd.AddCommand(deployCmd)
 }
 
@@ -113,10 +114,17 @@ func deployProject(d makr.Data) error {
 	buffaloEnv := d["Environment"].(string)
 	dbURL := fmt.Sprintf("DATABASE_URL=postgres://admin:password@buffalodb:5432/buffalo_%s?sslmode=disable", buffaloEnv)
 
+	var webContainerPort string
+	if !deploy.SkipSSL {
+		webContainerPort = "3000"
+	} else {
+		webContainerPort = "80"
+	}
+
 	cmds := []string{"docker container stop buffaloweb"}
 	cmds = append(cmds, "docker container rm buffaloweb")
 	cmds = append(cmds, "docker build -t buffaloimage -f buffaloproject/Dockerfile buffaloproject")
-	cmds = append(cmds, fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p 80:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", buffaloEnv, dbURL))
+	cmds = append(cmds, fmt.Sprintf("docker container run -it --name buffaloweb -v /root/buffaloproject:/app -p %s:3000 --network=buffalonet -e GO_ENV=%s -e %s -d buffaloimage", webContainerPort, buffaloEnv, dbURL))
 
 	for _, cmd := range cmds {
 		if err := remoteCmd(cmd); err != nil {

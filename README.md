@@ -8,6 +8,11 @@ A plugin for [https://gobuffalo.io](https://gobuffalo.io) that makes deploying t
 
 A 1GB DigitalOcean Standard Droplet will be created for you when using this plugin and being that DigitalOcean does charge for their services, hosting your site on this size droplet with them will cost you a $5 monthly fee. ([DigitalOcean Pricing](https://www.digitalocean.com/pricing/))
 
+### TODO: ###
+- [ ] Update `deploy` command to persist existing env vars configured during setup phase
+- [ ] Refactoring implementation & general cleanup
+- [ ] Add interactive version
+
 ## Installation
 
 ```bash
